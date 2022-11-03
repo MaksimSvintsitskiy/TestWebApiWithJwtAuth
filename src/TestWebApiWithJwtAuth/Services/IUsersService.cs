@@ -2,7 +2,7 @@
 
 namespace TestWebApiWithJwtAuth.Services;
 
-public interface IUserService
+public interface IUsersService
 {
     User? GetUserById(int userId);
 

@@ -2,50 +2,54 @@
 
 namespace TestWebApiWithJwtAuth.Services;
 
-internal class UserService : IUserService
+internal class UsersService : IUsersService
 {
     private readonly List<User> _users = new();
 
-    User? IUserService.GetUserById(int userId)
+    User? IUsersService.GetUserById(int userId)
     {
         return _users.FirstOrDefault(u => u.Id == userId);
     }
 
-    User? IUserService.GetUserByLoginPassword(string login, string password)
+    User? IUsersService.GetUserByLoginPassword(string login, string password)
     {
-        return _users.FirstOrDefault(u => string.Equals(u.Login, login, StringComparison.OrdinalIgnoreCase) && string.Equals(u.Email, password, StringComparison.OrdinalIgnoreCase));
+        return _users.FirstOrDefault(u => string.Equals(u.Login, login, StringComparison.OrdinalIgnoreCase) && string.Equals(u.Password, password, StringComparison.OrdinalIgnoreCase));
     }
 
-    bool IUserService.IsUserExist(string login)
+    bool IUsersService.IsUserExist(string login)
     {
         return _users.Any(u => string.Equals(u.Login, login, StringComparison.OrdinalIgnoreCase));
     }
 
-    int IUserService.SaveUser(User user)
+    int IUsersService.SaveUser(User user)
     {
         if (user == null)
         {
             throw new ArgumentNullException(nameof(user));
         }
 
-        var userById = _users.FirstOrDefault(u => u.Id == user.Id);
-
-        if (userById == null || user.Id == 0)
+        if (user.Id == 0)
         {
             var nextId = _users.Count > 0 ? _users.Max(u => u.Id) : 1;
 
             user.Id = nextId;
 
             _users.Add(user);
+
+            return user.Id;
         }
-        else
+
+        var userById = _users.FirstOrDefault(u => u.Id == user.Id);
+
+        if (userById != null)
         {
             userById.Email = user.Email;
             userById.Name = user.Name;
             userById.Phone = user.Phone;
             userById.Surname = user.Surname;
+            userById.Password = user.Password;
         }
-
+       
         return user.Id;
     }
 }

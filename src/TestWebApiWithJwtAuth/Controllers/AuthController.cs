@@ -2,7 +2,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using TestWebApiWithJwtAuth.Authenticate;
+using TestWebApiWithJwtAuth.Controllers.Requests;
 using TestWebApiWithJwtAuth.Domain;
 using TestWebApiWithJwtAuth.Services;
 
@@ -12,14 +14,14 @@ namespace TestWebApiWithJwtAuth.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly JwtIssuerOptions _jwtIssuerOptions;
-        private readonly IUserService _userService;
+        private readonly JwtAuthOptions _jwtAuthOptions;
+        private readonly IUsersService _usersService;
 
-        public AuthController(IUserService userService)
-       //public AuthController(IUserService userService, JwtIssuerOptions jwtIssuerOptions)
+        
+       public AuthController(IUsersService usersService, JwtAuthOptions jwtAuthOptions)
         {
-            _userService = userService;
-            //_jwtIssuerOptions = jwtIssuerOptions;
+            _usersService = usersService;
+            _jwtAuthOptions = jwtAuthOptions;
         }
 
         [AllowAnonymous]
@@ -47,17 +49,12 @@ namespace TestWebApiWithJwtAuth.Controllers
                 return BadRequest(ModelState);
             }
 
-#pragma warning disable CS8604
-            if (_userService.IsUserExist(request.Login))
-#pragma warning restore CS8604
+            if (request.Login != null && _usersService.IsUserExist(request.Login))
             {
-                return BadRequest();
+                return BadRequest("User already registered");
             }
 
-            _userService.SaveUser(
-#pragma warning disable CS8601
-                new User { Login = request.Login, Email = request.Email, Password = request.Password});
-#pragma warning restore CS8601
+            _usersService.SaveUser(new User { Login = request.Login, Email = request.Email, Password = request.Password});
 
             return Ok();
         }
@@ -78,60 +75,37 @@ namespace TestWebApiWithJwtAuth.Controllers
                 return BadRequest();
             }
 
-            var user = _userService.GetUserByLoginPassword(request.Login, request.Password);
+            var user = _usersService.GetUserByLoginPassword(request.Login, request.Password);
 
-            /*var token = GetToken(user);
+            if (user == null)
+            {
+                return BadRequest();
+            }
 
-            Response.Headers.Add("Authorization", token);*/
+            var token = GetToken(user);
+
+            Response.Headers.Add("Authorization", token);
 
             return Ok(user);
         }
 
 
-
-
-
         private string GetToken(User user)
         {
-            var identity = GetIdentity(user);
+            var claims = new List<Claim>
+            {
+                new(JwtClaimIdentifiers.Id,  user.Id.ToString()),
+            };
 
             var jwt = new JwtSecurityToken(
-                _jwtIssuerOptions.Issuer,
-                _jwtIssuerOptions.Audience,
-                identity.Claims,
-                _jwtIssuerOptions.NotBefore,
-                _jwtIssuerOptions.Expiration,
-                _jwtIssuerOptions.SigningCredentials);
+                issuer: _jwtAuthOptions.Issuer,
+                audience: _jwtAuthOptions.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.Add(TimeSpan.FromMinutes(5)),
+                signingCredentials: new SigningCredentials(_jwtAuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
 
             var token = new JwtSecurityTokenHandler().WriteToken(jwt);
             return token;
         }
-
-        private ClaimsIdentity GetIdentity(User user)
-        {
-            var claims = new List<Claim>()
-            {
-                new(JwtClaimIdentifiers.Id,  user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, _jwtIssuerOptions.JtiGenerator()),
-                new Claim(JwtRegisteredClaimNames.Iat, DateTime.Now.TimeOfDay.Ticks.ToString(), ClaimValueTypes.Integer64),
-            };
-            
-            ClaimsIdentity claimsIdentity = new ClaimsIdentity(claims, "Token");
-
-            return claimsIdentity;
-        }
     }
-
-    public class LoginRequest
-    {
-        public string? Login { get; set; }
-        public string? Password { get; set; }
-    }
-
-    public class RegisterUserRequest
-    {
-        public string? Login { get; set; }
-        public string? Email { get; set; }
-        public string? Password { get; set; }
-    }
-} 
+}

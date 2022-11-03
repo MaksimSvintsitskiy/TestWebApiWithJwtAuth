@@ -30,9 +30,9 @@ internal class UsersService : IUsersService
 
         if (user.Id == 0)
         {
-            var nextId = _users.Count > 0 ? _users.Max(u => u.Id) : 1;
+            var nextId = _users.Count > 0 ? _users.Max(u => u.Id) : 0;
 
-            user.Id = nextId;
+            user.Id = nextId + 1;
 
             _users.Add(user);
 

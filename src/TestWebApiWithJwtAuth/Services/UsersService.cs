@@ -21,7 +21,7 @@ internal class UsersService : IUsersService
         return _users.Any(u => string.Equals(u.Login, login, StringComparison.OrdinalIgnoreCase));
     }
 
-    int IUsersService.SaveUser(User user)
+    void IUsersService.SaveUser(User user)
     {
         if (user == null)
         {
@@ -36,7 +36,7 @@ internal class UsersService : IUsersService
 
             _users.Add(user);
 
-            return user.Id;
+            return;
         }
 
         var userById = _users.FirstOrDefault(u => u.Id == user.Id);
@@ -49,7 +49,5 @@ internal class UsersService : IUsersService
             userById.Surname = user.Surname;
             userById.Password = user.Password;
         }
-       
-        return user.Id;
     }
 }

@@ -37,7 +37,7 @@ namespace TestWebApiWithJwtAuth.Controllers
 
             if (userById == null)
             {
-                return BadRequest();
+                return BadRequest("Unknown userId");
             }
 
             if (string.IsNullOrWhiteSpace(user.Name))
@@ -63,6 +63,11 @@ namespace TestWebApiWithJwtAuth.Controllers
             if (string.IsNullOrWhiteSpace(user.Password))
             {
                 ModelState.AddModelError("Password", "value is null or empty");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
             }
 
             _usersService.SaveUser(user);

@@ -10,5 +10,5 @@ public interface IUsersService
 
     bool IsUserExist(string login);
 
-    int SaveUser(User user);
+    void SaveUser(User user);
 }

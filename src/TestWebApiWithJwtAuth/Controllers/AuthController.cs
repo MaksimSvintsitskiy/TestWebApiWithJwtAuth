@@ -29,6 +29,7 @@ namespace TestWebApiWithJwtAuth.Controllers
         [Route("register")]
         public ActionResult RegisterUser(RegisterUserRequest request)
         {
+            #region validate request
             if (string.IsNullOrWhiteSpace(request.Login))
             {
                 ModelState.AddModelError("Login", "value is null or empty");
@@ -43,17 +44,19 @@ namespace TestWebApiWithJwtAuth.Controllers
             {
                 ModelState.AddModelError("password", "value is null or empty");
             }
-
+            
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+            #endregion
 
             if (request.Login != null && _usersService.IsUserExist(request.Login))
             {
                 return BadRequest("User already registered");
             }
 
+            // in real app the password must be encrypted before save in db 
             _usersService.SaveUser(new User { Login = request.Login, Email = request.Email, Password = request.Password});
 
             return Ok();
@@ -67,15 +70,22 @@ namespace TestWebApiWithJwtAuth.Controllers
         {
             if (string.IsNullOrWhiteSpace(request.Login))
             {
-                return BadRequest();
+                ModelState.AddModelError("Login", "value is null or empty");
             }
 
             if (string.IsNullOrWhiteSpace(request.Password))
             {
-                return BadRequest();
+                ModelState.AddModelError("password", "value is null or empty");
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+#pragma warning disable CS8604
             var user = _usersService.GetUserByLoginPassword(request.Login, request.Password);
+#pragma warning restore CS8604
 
             if (user == null)
             {
@@ -94,7 +104,7 @@ namespace TestWebApiWithJwtAuth.Controllers
         {
             var claims = new List<Claim>
             {
-                new(JwtClaimIdentifiers.Id,  user.Id.ToString()),
+                new(JwtClaimIdentifiers.Id,  user.Id.ToString())
             };
 
             var jwt = new JwtSecurityToken(

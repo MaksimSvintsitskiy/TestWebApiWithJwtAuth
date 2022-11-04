@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TestWebApiWithJwtAuth.Authenticate;
 using TestWebApiWithJwtAuth.Domain;
 using TestWebApiWithJwtAuth.Services;
 
@@ -20,26 +21,38 @@ namespace TestWebApiWithJwtAuth.Controllers
         [HttpGet("{id}")]
         public ActionResult<User> Get(int id)
         {
+            if (!TryCheckUserClaims(id))
+            {
+                return Forbid();
+            }
+
             User? user = _usersService.GetUserById(id);
             if (user == null)
             {
-                return NotFound();
+                return Forbid();
             }
 
             return new ObjectResult(user);
         }
+        
 
         [Authorize]
         [HttpPost]
         public ActionResult Post([FromBody] User user)
         {
+            if (!TryCheckUserClaims(user.Id))
+            {
+                return Forbid();
+            }
+
             var userById = _usersService.GetUserById(user.Id);
 
             if (userById == null)
             {
-                return BadRequest("Unknown userId");
+                return Forbid();
             }
 
+            #region validate user
             if (string.IsNullOrWhiteSpace(user.Name))
             {
                 ModelState.AddModelError("Name", "value is null or empty");
@@ -69,10 +82,32 @@ namespace TestWebApiWithJwtAuth.Controllers
             {
                 return BadRequest(ModelState);
             }
+            #endregion
+
 
             _usersService.SaveUser(user);
 
             return Ok();
+        }
+
+        private bool TryCheckUserClaims(int userId)
+        {
+            var userIdClaim = this.User.Claims.FirstOrDefault(i => string.Equals(i.Type, JwtClaimIdentifiers.Id));
+
+            if (userIdClaim == null)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(userIdClaim.Value)
+                || !int.TryParse(userIdClaim.Value, out var userIdFromClaim)
+                || userIdFromClaim == 0
+                || userId != userIdFromClaim)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
